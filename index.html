@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heart Rate Zones</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f; --surface: #111118;
+    --border: rgba(255,255,255,0.06); --text: #e8e8f0; --muted: #6b6b80;
+    --z1:#3b82f6; --z2:#10b981; --z3:#f59e0b; --z4:#ef4444; --z5:#a855f7;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; font-weight:300; min-height:100vh; padding:48px 24px; line-height:1.5; }
+  .wrapper { max-width:1100px; margin:0 auto; }
+
+  /* TOPBAR */
+  .topbar { display:flex; justify-content:flex-end; margin-bottom:24px; }
+  .lang-switcher { display:flex; align-items:center; gap:0; background:var(--surface); border:1px solid rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; }
+  .lang-btn {
+    display:flex; align-items:center; gap:7px;
+    padding:8px 16px; background:transparent; border:none; cursor:pointer;
+    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500;
+    color:var(--muted); transition:all 0.2s; white-space:nowrap;
+  }
+  .lang-btn .flag { font-size:16px; line-height:1; }
+  .lang-btn:hover { color:#fff; background:rgba(255,255,255,0.05); }
+  .lang-btn.active { color:#fff; background:rgba(255,255,255,0.1); }
+  .lang-divider { width:1px; background:rgba(255,255,255,0.1); height:20px; }
+
+  /* HEADER */
+  header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:36px; padding-bottom:32px; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:24px; }
+  .title-block h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(52px,8vw,96px); letter-spacing:0.03em; line-height:0.9; color:#fff; }
+  .title-block h1 span { display:block; background:linear-gradient(90deg,#3b82f6,#a855f7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+  .stats-row { display:flex; gap:24px; flex-wrap:wrap; }
+  .stat { text-align:right; }
+  .stat-label { font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-bottom:2px; }
+  .stat-value { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:0.04em; color:#fff; }
+  .stat-unit { font-size:12px; color:var(--muted); margin-left:2px; }
+
+  /* CALC PANEL */
+  .calc-panel { background:var(--surface); border:1px solid rgba(255,255,255,0.1); border-radius:16px; padding:24px 28px; margin-bottom:32px; position:relative; overflow:hidden; }
+  .calc-panel::before { content:''; position:absolute; top:0;left:0;right:0; height:2px; background:linear-gradient(90deg,var(--z1),var(--z2),var(--z3),var(--z4),var(--z5)); }
+  .calc-title { font-size:11px; text-transform:uppercase; letter-spacing:0.15em; color:var(--muted); margin-bottom:20px; }
+  .calc-fields { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:16px; align-items:end; }
+  .field-group { display:flex; flex-direction:column; gap:8px; }
+  .field-label { font-size:11px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .field-input { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px 14px; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; color:#fff; width:100%; transition:border-color 0.2s,background 0.2s; outline:none; -moz-appearance:textfield; }
+  .field-input::-webkit-outer-spin-button, .field-input::-webkit-inner-spin-button { -webkit-appearance:none; }
+  .field-input:focus { border-color:rgba(255,255,255,0.3); background:rgba(255,255,255,0.08); }
+  .field-input.error { border-color:var(--z4)!important; }
+  select.field-input { cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b6b80' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; padding-right:36px; }
+  select.field-input option { background:#1a1a24; color:#fff; }
+  .calc-btn { background:linear-gradient(135deg,#3b82f6,#a855f7); border:none; border-radius:8px; padding:11px 28px; font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:0.1em; color:#fff; cursor:pointer; transition:opacity 0.2s,transform 0.15s; white-space:nowrap; width:100%; }
+  .calc-btn:hover { opacity:0.85; transform:translateY(-1px); }
+  .calc-btn:active { transform:translateY(0); }
+  .error-msg { font-size:11px; color:var(--z4); margin-top:2px; min-height:16px; }
+
+  /* FORMULA NOTE */
+  .formula-note { background:rgba(255,255,255,0.03); border:1px solid var(--border); border-radius:10px; padding:14px 20px; margin-bottom:36px; font-size:12px; color:var(--muted); letter-spacing:0.02em; }
+  .formula-note strong { color:rgba(255,255,255,0.5); font-weight:500; }
+
+  /* ZONES */
+  .zones { display:flex; flex-direction:column; gap:12px; margin-bottom:48px; }
+  .zone-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:grid; grid-template-columns:6px 1fr; transition:transform 0.2s ease,box-shadow 0.2s ease; }
+  .zone-card:hover { transform:translateY(-2px); box-shadow:0 12px 40px rgba(0,0,0,0.4); }
+  .zone-bar { width:6px; }
+  .zone-body { padding:20px 24px; }
+  .zone-top { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; margin-bottom:16px; }
+  .zone-badge { font-family:'Bebas Neue',sans-serif; font-size:13px; letter-spacing:0.12em; padding:4px 10px; border-radius:6px; white-space:nowrap; }
+  .zone-name { font-size:18px; font-weight:500; color:#fff; letter-spacing:-0.01em; }
+  .zone-hr { text-align:right; white-space:nowrap; }
+  .zone-bpm { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:0.04em; color:#fff; }
+  .zone-pct { font-size:11px; color:var(--muted); letter-spacing:0.08em; }
+  .zone-progress-wrap { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; margin-bottom:16px; overflow:hidden; }
+  .zone-progress-fill { height:100%; border-radius:2px; transition:width 0.5s ease; }
+  .zone-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; }
+  .zone-info-block { background:rgba(255,255,255,0.03); border-radius:8px; padding:12px 14px; }
+  .info-label { font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); margin-bottom:6px; }
+  .info-text { font-size:13px; color:rgba(255,255,255,0.7); line-height:1.5; }
+
+  /* SUMMARY TABLE */
+  .summary-section { margin-top:48px; }
+  .section-title { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:0.06em; color:var(--muted); margin-bottom:20px; }
+  .summary-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .summary-table th { font-size:10px; text-transform:uppercase; letter-spacing:0.12em; color:var(--muted); font-weight:500; text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); }
+  .summary-table td { padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:middle; color:rgba(255,255,255,0.75); }
+  .summary-table tr:last-child td { border-bottom:none; }
+  .summary-table tr:hover td { background:rgba(255,255,255,0.02); }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+
+  /* TIPS */
+  .tips-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; margin-top:20px; }
+  .tip-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+  .tip-card h4 { font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); margin-bottom:8px; }
+  .tip-card p { font-size:13px; color:rgba(255,255,255,0.65); line-height:1.6; }
+
+  footer { margin-top:48px; padding-top:24px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); letter-spacing:0.05em; text-align:center; }
+
+  @keyframes flash { 0%{opacity:0.2;transform:scale(0.97)} 100%{opacity:1;transform:scale(1)} }
+  .flash { animation:flash 0.35s ease-out; }
+  @keyframes langSwitch { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .lang-animate { animation:langSwitch 0.3s ease-out; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- LANGUAGE SWITCHER -->
+  <div class="topbar">
+    <div class="lang-switcher">
+      <button class="lang-btn active" id="btn-en" onclick="setLang('en')">
+        <span class="flag">🇬🇧</span> English
+      </button>
+      <div class="lang-divider"></div>
+      <button class="lang-btn" id="btn-es" onclick="setLang('es')">
+        <span class="flag">🇪🇸</span> Español
+      </button>
+    </div>
+  </div>
+
+  <!-- HEADER -->
+  <header>
+    <div class="title-block">
+      <h1 id="title-line1">Heart Rate</h1>
+    </div>
+    <div class="stats-row">
+      <div class="stat"><div class="stat-label" id="lbl-age">Age</div><div class="stat-value" id="disp-age">31<span class="stat-unit">yrs</span></div></div>
+      <div class="stat"><div class="stat-label" id="lbl-maxhr">Max HR</div><div class="stat-value" id="disp-maxhr">189<span class="stat-unit">bpm</span></div></div>
+      <div class="stat"><div class="stat-label" id="lbl-rhr">Resting HR</div><div class="stat-value" id="disp-rhr">60<span class="stat-unit">bpm</span></div></div>
+      <div class="stat"><div class="stat-label" id="lbl-hrr">HR Reserve</div><div class="stat-value" id="disp-hrr">129<span class="stat-unit">bpm</span></div></div>
+    </div>
+  </header>
+
+  <!-- CALC PANEL -->
+  <div class="calc-panel">
+    <div class="calc-title" id="calc-title">⚙️ &nbsp;Recalculate Your Zones</div>
+    <div class="calc-fields">
+      <div class="field-group">
+        <label class="field-label" id="lbl-inp-age" for="inp-age">Age (years)</label>
+        <input class="field-input" id="inp-age" type="number" min="10" max="100" value="31">
+        <div class="error-msg" id="err-age"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="lbl-inp-rhr" for="inp-rhr">Resting HR (bpm)</label>
+        <input class="field-input" id="inp-rhr" type="number" min="30" max="120" value="60">
+        <div class="error-msg" id="err-rhr"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" id="lbl-inp-level" for="inp-level">Fitness Level</label>
+        <select class="field-input" id="inp-level">
+          <option value="beginner" id="opt-beginner">Beginner</option>
+          <option value="intermediate" id="opt-intermediate" selected>Intermediate</option>
+          <option value="advanced" id="opt-advanced">Advanced</option>
+          <option value="athlete" id="opt-athlete">Athlete</option>
+        </select>
+        <div class="error-msg"></div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" style="opacity:0">‎</label>
+        <button class="calc-btn" id="calc-btn" onclick="recalculate()">Calculate Zones</button>
+        <div class="error-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORMULA NOTE -->
+  <div class="formula-note" id="formula-note-block">
+    <strong id="fn-method-lbl">Method:</strong> <span id="fn-method-text">Karvonen Formula — Target HR = RHR + (HRR × % intensity)</span> &nbsp;|&nbsp;
+    <strong id="fn-maxhr-lbl">Max HR:</strong> 220 − Age = <span id="fn-maxhr">189</span> bpm &nbsp;|&nbsp;
+    <strong id="fn-hrr-lbl">HRR:</strong> <span id="fn-hrr">129</span> bpm &nbsp;|&nbsp;
+    <strong id="fn-level-lbl">Level:</strong> <span id="fn-level">Intermediate</span>
+  </div>
+
+  <!-- ZONE CARDS -->
+  <div class="zones">
+
+    <div class="zone-card">
+      <div class="zone-bar" style="background:var(--z1)"></div>
+      <div class="zone-body">
+        <div class="zone-top">
+          <div class="zone-badge" style="background:rgba(59,130,246,0.15);color:var(--z1)">ZONE 1</div>
+          <div class="zone-name" id="zname-1">Recovery / Active Rest</div>
+          <div class="zone-hr"><div class="zone-bpm" id="bpm-z1">89 – 115</div><div class="zone-pct">50–65% HRR &nbsp;·&nbsp; bpm</div></div>
+        </div>
+        <div class="zone-progress-wrap"><div class="zone-progress-fill" id="bar-z1" style="width:32%;background:var(--z1)"></div></div>
+        <div class="zone-grid">
+          <div class="zone-info-block"><div class="info-label" id="lbl-when-1">When to use</div><div class="info-text" id="ztxt-when-1">Warm-ups, cool-downs, rest days, and active recovery between hard sessions</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-feel-1">Feel</div><div class="info-text" id="ztxt-feel-1">Very easy — you can hold a full conversation with no breathlessness</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-tips-1">Training tips</div><div class="info-text" id="ztxt-tips-1">Walk, easy cycling or swim. Resist the urge to push harder. Aids muscle repair and promotes blood flow.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-fuel-1">Fuel source</div><div class="info-text" id="ztxt-fuel-1">~70% fat · 30% carbs. Great for fat adaptation over time.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-bar" style="background:var(--z2)"></div>
+      <div class="zone-body">
+        <div class="zone-top">
+          <div class="zone-badge" style="background:rgba(16,185,129,0.15);color:var(--z2)">ZONE 2</div>
+          <div class="zone-name" id="zname-2">Aerobic Base / Fat Burn</div>
+          <div class="zone-hr"><div class="zone-bpm" id="bpm-z2">115 – 134</div><div class="zone-pct">65–75% HRR &nbsp;·&nbsp; bpm</div></div>
+        </div>
+        <div class="zone-progress-wrap"><div class="zone-progress-fill" id="bar-z2" style="width:50%;background:var(--z2)"></div></div>
+        <div class="zone-grid">
+          <div class="zone-info-block"><div class="info-label" id="lbl-when-2">When to use</div><div class="info-text" id="ztxt-when-2">Long steady runs, easy rides, base-building phases. Most of your weekly volume should be here.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-feel-2">Feel</div><div class="info-text" id="ztxt-feel-2">Comfortable — you can speak in short sentences. Slightly aware of your breathing.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-tips-2">Training tips</div><div class="info-text" id="ztxt-tips-2">The foundation of endurance fitness. Aim for 60–70% of weekly training time here. Builds mitochondrial density.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-fuel-2">Fuel source</div><div class="info-text" id="ztxt-fuel-2">~65% fat · 35% carbs. Prime fat-burning zone.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-bar" style="background:var(--z3)"></div>
+      <div class="zone-body">
+        <div class="zone-top">
+          <div class="zone-badge" style="background:rgba(245,158,11,0.15);color:var(--z3)">ZONE 3</div>
+          <div class="zone-name" id="zname-3">Aerobic Tempo</div>
+          <div class="zone-hr"><div class="zone-bpm" id="bpm-z3">134 – 150</div><div class="zone-pct">75–84% HRR &nbsp;·&nbsp; bpm</div></div>
+        </div>
+        <div class="zone-progress-wrap"><div class="zone-progress-fill" id="bar-z3" style="width:65%;background:var(--z3)"></div></div>
+        <div class="zone-grid">
+          <div class="zone-info-block"><div class="info-label" id="lbl-when-3">When to use</div><div class="info-text" id="ztxt-when-3">Tempo runs, moderate group rides, sustained efforts of 20–60 min</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-feel-3">Feel</div><div class="info-text" id="ztxt-feel-3">Moderate — breathing harder, conversation is difficult. Comfortably uncomfortable.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-tips-3">Training tips</div><div class="info-text" id="ztxt-tips-3">Use sparingly (10–15% of volume). Called the "grey zone" — tiring but less adaptive than Z2 or Z4. Best as race-pace work.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-fuel-3">Fuel source</div><div class="info-text" id="ztxt-fuel-3">~50% fat · 50% carbs. Balanced burn, glycogen demand rising.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-bar" style="background:var(--z4)"></div>
+      <div class="zone-body">
+        <div class="zone-top">
+          <div class="zone-badge" style="background:rgba(239,68,68,0.15);color:var(--z4)">ZONE 4</div>
+          <div class="zone-name" id="zname-4">Lactate Threshold</div>
+          <div class="zone-hr"><div class="zone-bpm" id="bpm-z4">150 – 163</div><div class="zone-pct">84–93% HRR &nbsp;·&nbsp; bpm</div></div>
+        </div>
+        <div class="zone-progress-wrap"><div class="zone-progress-fill" id="bar-z4" style="width:80%;background:var(--z4)"></div></div>
+        <div class="zone-grid">
+          <div class="zone-info-block"><div class="info-label" id="lbl-when-4">When to use</div><div class="info-text" id="ztxt-when-4">Interval training, hill repeats, 5K–10K race pace efforts, threshold blocks (3–8 min)</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-feel-4">Feel</div><div class="info-text" id="ztxt-feel-4">Hard — can only say a few words. Burning sensation in muscles. Sustainable for ~10–15 min.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-tips-4">Training tips</div><div class="info-text" id="ztxt-tips-4">1–2 sessions/week max. Raises your lactate threshold = you go faster before fatigue hits. Structure as intervals (e.g. 5×4 min).</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-fuel-4">Fuel source</div><div class="info-text" id="ztxt-fuel-4">~25% fat · 75% carbs. High glycogen demand — fuel before.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="zone-card">
+      <div class="zone-bar" style="background:var(--z5)"></div>
+      <div class="zone-body">
+        <div class="zone-top">
+          <div class="zone-badge" style="background:rgba(168,85,247,0.15);color:var(--z5)">ZONE 5</div>
+          <div class="zone-name" id="zname-5">VO₂ Max / Neuromuscular</div>
+          <div class="zone-hr"><div class="zone-bpm" id="bpm-z5">163 – 189</div><div class="zone-pct">93–100% HRR &nbsp;·&nbsp; bpm</div></div>
+        </div>
+        <div class="zone-progress-wrap"><div class="zone-progress-fill" id="bar-z5" style="width:100%;background:linear-gradient(90deg,var(--z5),#ec4899)"></div></div>
+        <div class="zone-grid">
+          <div class="zone-info-block"><div class="info-label" id="lbl-when-5">When to use</div><div class="info-text" id="ztxt-when-5">Sprint intervals, HIIT, short maximal efforts (30 sec–2 min), sport-specific speed work</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-feel-5">Feel</div><div class="info-text" id="ztxt-feel-5">All-out — cannot speak. Maximum effort. Difficult to sustain beyond 2 minutes.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-tips-5">Training tips</div><div class="info-text" id="ztxt-tips-5" id="tip-z5">Max 1×/week for intermediates. Use very short intervals (30s–90s) with full rest. Boosts VO₂ max and power.</div></div>
+          <div class="zone-info-block"><div class="info-label" id="lbl-fuel-5">Fuel source</div><div class="info-text" id="ztxt-fuel-5">~5% fat · 95% carbs. Almost pure glycolysis. Carb-up beforehand.</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SUMMARY TABLE -->
+  <div class="summary-section">
+    <div class="section-title" id="tbl-title">Quick Reference</div>
+    <table class="summary-table">
+      <thead>
+        <tr>
+          <th id="th-zone">Zone</th><th id="th-name">Name</th><th id="th-hr">Heart Rate</th>
+          <th id="th-pct">% Max HR</th><th id="th-dur">Duration per effort</th><th id="th-vol">Weekly volume</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:var(--z1)"></span><span id="tbl-zn1">Zone 1</span></td><td id="tbl-name1">Recovery</td><td id="tbl-z1">89 – 115 bpm</td><td>~55–65%</td><td id="tbl-dur1">Unlimited</td><td id="tbl-vol1">Rest days / post-workout</td></tr>
+        <tr><td><span class="dot" style="background:var(--z2)"></span><span id="tbl-zn2">Zone 2</span></td><td id="tbl-name2">Aerobic Base</td><td id="tbl-z2">115 – 134 bpm</td><td>~65–75%</td><td id="tbl-dur2">45 min – 3 hrs</td><td id="tbl-vol2">60–70% of total</td></tr>
+        <tr><td><span class="dot" style="background:var(--z3)"></span><span id="tbl-zn3">Zone 3</span></td><td id="tbl-name3">Tempo</td><td id="tbl-z3">134 – 150 bpm</td><td>~75–84%</td><td id="tbl-dur3">20 – 60 min</td><td id="tbl-vol3">10–15% of total</td></tr>
+        <tr><td><span class="dot" style="background:var(--z4)"></span><span id="tbl-zn4">Zone 4</span></td><td id="tbl-name4">Threshold</td><td id="tbl-z4">150 – 163 bpm</td><td>~84–93%</td><td id="tbl-dur4">3 – 15 min intervals</td><td id="tbl-vol4">1–2 sessions/week</td></tr>
+        <tr><td><span class="dot" style="background:var(--z5)"></span><span id="tbl-zn5">Zone 5</span></td><td id="tbl-name5">VO₂ Max</td><td id="tbl-z5">163 – 189 bpm</td><td>~93–100%</td><td id="tbl-dur5">30 sec – 2 min</td><td id="tbl-vol5">1 session/week max</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TIPS -->
+  <div class="summary-section">
+    <div class="section-title" id="tips-title">Intermediate Training Tips</div>
+    <div class="tips-grid" id="tips-grid">
+      <div class="tip-card"><h4>🏃 80/20 Rule</h4><p>Keep ~80% of your training in Zones 1–2 and only ~20% in Zones 3–5. Most intermediates do the opposite — and plateau.</p></div>
+      <div class="tip-card"><h4>📏 Measure Accurately</h4><p>A chest strap HR monitor is far more accurate than optical wrist sensors, especially during intervals. Consider one for Zone 4–5 work.</p></div>
+      <div class="tip-card"><h4>🔄 Progression</h4><p>Build Z2 base for 6–8 weeks, then layer in one Z4 session/week. Add Z5 only after threshold improves.</p></div>
+      <div class="tip-card"><h4>💤 Recovery Signals</h4><p>If your resting HR is 5–7+ bpm above normal in the morning, take a Zone 1 day or full rest — you're not fully recovered.</p></div>
+      <div class="tip-card"><h4>🍽️ Fueling by Zone</h4><p>Z1–2: no extra carbs needed. Z3: light snack before. Z4–5: carb-rich meal 2–3 hrs prior and recovery shake after.</p></div>
+      <div class="tip-card"><h4>📈 Track & Adjust</h4><p>As fitness improves, your zones shift — retest every 8–12 weeks. A lower resting HR means your zones will recalculate slightly.</p></div>
+    </div>
+  </div>
+
+  <footer id="footer-note">
+    Calculated using the Karvonen Formula &nbsp;·&nbsp; Age 31 &nbsp;·&nbsp; RHR 60 bpm &nbsp;·&nbsp; Max HR 189 bpm &nbsp;·&nbsp; Intermediate Level
+    <br>For medical conditions or clinical precision, consult a sports medicine professional.
+  </footer>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// TRANSLATION STRINGS
+// ─────────────────────────────────────────────
+const I18N = {
+  en: {
+    pageTitle: 'Heart Rate Zones',
+    titleLine1: 'Heart Rate',
+    titleGradient: 'Zones',
+    lblAge: 'Age', lblMaxHR: 'Max HR', lblRHR: 'Resting HR', lblHRR: 'HR Reserve',
+    unitYrs: 'yrs',
+    calcTitle: '⚙️ \u00a0Recalculate Your Zones',
+    lblInpAge: 'Age (years)', lblInpRhr: 'Resting HR (bpm)', lblInpLevel: 'Fitness Level',
+    calcBtn: 'Calculate Zones',
+    errAge: 'Enter a value between 10–100', errRhr: 'Enter a value between 30–120',
+    optBeginner: 'Beginner', optIntermediate: 'Intermediate', optAdvanced: 'Advanced', optAthlete: 'Athlete',
+    fnMethodLbl: 'Method:', fnMethodText: 'Karvonen Formula — Target HR = RHR + (HRR × % intensity)',
+    fnMaxHRLbl: 'Max HR:', fnHRRLbl: 'HRR:', fnLevelLbl: 'Level:',
+    znames: ['Recovery / Active Rest','Aerobic Base / Fat Burn','Aerobic Tempo','Lactate Threshold','VO₂ Max / Neuromuscular'],
+    lblWhen: 'When to use', lblFeel: 'Feel', lblTips: 'Training tips', lblFuel: 'Fuel source',
+    zones: [
+      {
+        when: 'Warm-ups, cool-downs, rest days, and active recovery between hard sessions',
+        feel: 'Very easy — you can hold a full conversation with no breathlessness',
+        tips: 'Walk, easy cycling or swim. Resist the urge to push harder. Aids muscle repair and promotes blood flow.',
+        fuel: '~70% fat · 30% carbs. Great for fat adaptation over time.'
+      },
+      {
+        when: 'Long steady runs, easy rides, base-building phases. Most of your weekly volume should be here.',
+        feel: 'Comfortable — you can speak in short sentences. Slightly aware of your breathing.',
+        tips: 'The foundation of endurance fitness. Aim for 60–70% of weekly training time here. Builds mitochondrial density.',
+        fuel: '~65% fat · 35% carbs. Prime fat-burning zone.'
+      },
+      {
+        when: 'Tempo runs, moderate group rides, sustained efforts of 20–60 min',
+        feel: 'Moderate — breathing harder, conversation is difficult. Comfortably uncomfortable.',
+        tips: 'Use sparingly (10–15% of volume). Called the "grey zone" — tiring but less adaptive than Z2 or Z4. Best as race-pace work.',
+        fuel: '~50% fat · 50% carbs. Balanced burn, glycogen demand rising.'
+      },
+      {
+        when: 'Interval training, hill repeats, 5K–10K race pace efforts, threshold blocks (3–8 min)',
+        feel: 'Hard — can only say a few words. Burning sensation in muscles. Sustainable for ~10–15 min.',
+        tips: '1–2 sessions/week max. Raises your lactate threshold = you go faster before fatigue hits. Structure as intervals (e.g. 5×4 min).',
+        fuel: '~25% fat · 75% carbs. High glycogen demand — fuel before.'
+      },
+      {
+        when: 'Sprint intervals, HIIT, short maximal efforts (30 sec–2 min), sport-specific speed work',
+        feel: 'All-out — cannot speak. Maximum effort. Difficult to sustain beyond 2 minutes.',
+        fuel: '~5% fat · 95% carbs. Almost pure glycolysis. Carb-up beforehand.'
+      }
+    ],
+    tblTitle: 'Quick Reference',
+    thZone: 'Zone', thName: 'Name', thHR: 'Heart Rate', thPct: '% Max HR', thDur: 'Duration per effort', thVol: 'Weekly volume',
+    tblNames: ['Recovery','Aerobic Base','Tempo','Threshold','VO₂ Max'],
+    tblDurs: ['Unlimited','45 min – 3 hrs','20 – 60 min','3 – 15 min intervals','30 sec – 2 min'],
+    tblVols: ['Rest days / post-workout','60–70% of total','10–15% of total','1–2 sessions/week','1 session/week max'],
+    footerTemplate: (age,rhr,maxHR,level) => `Calculated using the Karvonen Formula &nbsp;·&nbsp; Age ${age} &nbsp;·&nbsp; RHR ${rhr} bpm &nbsp;·&nbsp; Max HR ${maxHR} bpm &nbsp;·&nbsp; ${level}<br>For medical conditions or clinical precision, consult a sports medicine professional.`,
+    levelLabels: { beginner:'Beginner', intermediate:'Intermediate', advanced:'Advanced', athlete:'Athlete' },
+    tips: {
+      beginner: { title:'Beginner Training Tips', cards:[
+        ['🚶','Start Slow',"Begin with 3 sessions/week entirely in Zone 1–2. Don't rush into higher zones — your aerobic base needs time to develop."],
+        ['📅','Consistency First','20–30 min of Zone 2 three times a week beats one hard session and days of soreness. Show up regularly before adding intensity.'],
+        ['💤','Prioritize Recovery','Your body adapts during rest. Sleep 7–9 hrs and take at least 1–2 full rest days per week.'],
+        ['🩺','Monitor Your HR',"Many beginners train too hard. If you're gasping for breath, slow down — you're likely in Zone 4–5 when you should be in Zone 2."],
+        ['📈','Progress Gradually','Increase duration or intensity by no more than 10% per week to avoid overuse injuries and burnout.'],
+        ['🍽️','Basic Fueling','Eat a balanced meal 2 hrs before exercise. Stay hydrated. Post-workout: protein + carbs within 30–60 min.'],
+      ]},
+      intermediate: { title:'Intermediate Training Tips', cards:[
+        ['🏃','80/20 Rule','Keep ~80% of your training in Zones 1–2 and only ~20% in Zones 3–5. Most intermediates do the opposite — and plateau.'],
+        ['📏','Measure Accurately','A chest strap HR monitor is far more accurate than optical wrist sensors, especially during intervals. Consider one for Zone 4–5 work.'],
+        ['🔄','Progression','Build Z2 base for 6–8 weeks, then layer in one Z4 session/week. Add Z5 only after threshold improves.'],
+        ['💤','Recovery Signals',"If your resting HR is 5–7+ bpm above normal in the morning, take a Zone 1 day or full rest — you're not fully recovered."],
+        ['🍽️','Fueling by Zone','Z1–2: no extra carbs needed. Z3: light snack before. Z4–5: carb-rich meal 2–3 hrs prior and recovery shake after.'],
+        ['📈','Track & Adjust','As fitness improves, your zones shift — retest every 8–12 weeks. A lower resting HR means your zones will recalculate slightly.'],
+      ]},
+      advanced: { title:'Advanced Training Tips', cards:[
+        ['🎯','Polarized Training','Elite coaches recommend 80% easy (Z1–2) and 20% very hard (Z4–5), with very little Zone 3. Maximizes adaptation while limiting fatigue.'],
+        ['📊','HRV Monitoring','Track heart rate variability daily. A dropping HRV trend signals accumulated fatigue — reduce intensity before breakdown.'],
+        ['⚡','Zone 5 Intervals','1–2×/week during build phase. 30s on / 90s off, 6–8 reps. Focus on maximal neuromuscular recruitment.'],
+        ['🔁','Periodization','Structure your year in blocks: base (Z1–2), build (Z2–4), peak (all zones), taper. Each cycle 3–4 weeks with a recovery week.'],
+        ['🍽️','Precision Fueling','For Z4–5 work: 60–90g carbs/hr during efforts over 90 min. Practice race nutrition in training. Never try new foods on race day.'],
+        ['🧠','Mental Pacing','Advanced athletes often fail from going too hard early. Use HR and RPE together — HR lags effort in heat or fatigue.'],
+      ]},
+      athlete: { title:'Elite Athlete Training Tips', cards:[
+        ['🧬','Metabolic Testing','Consider lab VO₂ max and lactate threshold testing for exact zones. Field estimates like this tool have ±5–10% error.'],
+        ['📡','Power + HR Combo','Pair HR data with power meter or pace data. Cardiac drift (HR rising at fixed power) signals fatigue or dehydration.'],
+        ['🏔️','Altitude Adaptation','At altitude, your HR zones shift upward by 5–10 bpm. Recalculate if training above 1500m and expect reduced power output.'],
+        ['🔬','Zone 2 Mastery','Elite athletes sustain Zone 2 at paces that feel like Zone 4 to others — built over years, not months.'],
+        ['⚖️','Load Management',"Monitor training stress score (TSS) and chronic training load. Don't let acute load exceed chronic by more than 15% weekly."],
+        ['🛌','Sleep is Training','Elite athletes sleep 9–10 hrs. Growth hormone peaks in deep sleep — this is when you actually get faster and stronger.'],
+      ]}
+    },
+    z5tips: {
+      beginner:'Avoid Zone 5 in early training. Build at least 8–12 weeks of Zone 1–2 base before any high-intensity work.',
+      intermediate:'Max 1×/week. Use very short intervals (30s–90s) with full rest. Boosts VO₂ max and power.',
+      advanced:'1–2×/week during build phase. 30s on / 90s off, 6–8 reps. Focus on maximal neuromuscular recruitment.',
+      athlete:'Integrate with block periodization. Full Z5 microcycles (3–5 days) followed by recovery weeks to maximize super-compensation.'
+    }
+  },
+
+  es: {
+    pageTitle: 'Zonas de Frecuencia Cardíaca',
+    titleLine1: 'Frecuencia',
+    titleGradient: 'Cardíaca',
+    lblAge: 'Edad', lblMaxHR: 'FC Máx.', lblRHR: 'FC en Reposo', lblHRR: 'Reserva de FC',
+    unitYrs: 'años',
+    calcTitle: '⚙️ \u00a0Recalcular Tus Zonas',
+    lblInpAge: 'Edad (años)', lblInpRhr: 'FC en Reposo (lpm)', lblInpLevel: 'Nivel de Forma Física',
+    calcBtn: 'Calcular Zonas',
+    errAge: 'Introduce un valor entre 10–100', errRhr: 'Introduce un valor entre 30–120',
+    optBeginner: 'Principiante', optIntermediate: 'Intermedio', optAdvanced: 'Avanzado', optAthlete: 'Atleta',
+    fnMethodLbl: 'Método:', fnMethodText: 'Fórmula de Karvonen — FC objetivo = FCrep + (Reserva × % intensidad)',
+    fnMaxHRLbl: 'FC Máx.:', fnHRRLbl: 'Reserva:', fnLevelLbl: 'Nivel:',
+    znames: ['Recuperación / Descanso Activo','Base Aeróbica / Quema de Grasa','Tempo Aeróbico','Umbral de Lactato','VO₂ Máx. / Neuromuscular'],
+    lblWhen: 'Cuándo usarla', lblFeel: 'Sensación', lblTips: 'Consejos de entrenamiento', lblFuel: 'Fuente de energía',
+    zones: [
+      {
+        when: 'Calentamientos, enfriamientos, días de descanso y recuperación activa entre sesiones intensas',
+        feel: 'Muy fácil — puedes mantener una conversación completa sin agitarte',
+        tips: 'Caminar, ciclismo suave o natación tranquila. Evita el impulso de esforzarte más. Favorece la recuperación muscular y la circulación.',
+        fuel: '~70% grasas · 30% carbohidratos. Ideal para la adaptación al uso de grasas.'
+      },
+      {
+        when: 'Rodajes largos y suaves, salidas fáciles en bici, fases de construcción de base. La mayor parte de tu volumen semanal debería estar aquí.',
+        feel: 'Cómodo — puedes hablar en frases cortas. Ligeramente consciente de tu respiración.',
+        tips: 'La base de la resistencia aeróbica. Apunta a pasar el 60–70% del tiempo de entrenamiento semanal aquí. Aumenta la densidad mitocondrial.',
+        fuel: '~65% grasas · 35% carbohidratos. Zona óptima para quemar grasa.'
+      },
+      {
+        when: 'Rodajes a ritmo, salidas en grupo a intensidad moderada, esfuerzos sostenidos de 20–60 min',
+        feel: 'Moderado — respiración más fuerte, conversar es difícil. Incómodamente cómodo.',
+        tips: 'Úsala con moderación (10–15% del volumen). Conocida como la "zona gris" — cansadora pero menos adaptativa que Z2 o Z4. Mejor como trabajo a ritmo de competición.',
+        fuel: '~50% grasas · 50% carbohidratos. Combustión equilibrada, demanda de glucógeno en aumento.'
+      },
+      {
+        when: 'Entrenamiento de intervalos, repeticiones de cuesta, ritmo de 5K–10K, bloques de umbral (3–8 min)',
+        feel: 'Duro — apenas puedes decir unas pocas palabras. Sensación de quemazón en los músculos. Sostenible ~10–15 min.',
+        tips: '1–2 sesiones/semana como máximo. Eleva tu umbral de lactato = corres más rápido antes de fatigarte. Estructura en intervalos (p.ej. 5×4 min).',
+        fuel: '~25% grasas · 75% carbohidratos. Alta demanda de glucógeno — recárgalo antes.'
+      },
+      {
+        when: 'Sprints por intervalos, HIIT, esfuerzos máximos breves (30 seg–2 min), trabajo de velocidad específico',
+        feel: 'Al límite — incapaz de hablar. Esfuerzo máximo. Difícil de mantener más de 2 minutos.',
+        fuel: '~5% grasas · 95% carbohidratos. Casi glucólisis pura. Carga de carbohidratos antes.'
+      }
+    ],
+    tblTitle: 'Referencia Rápida',
+    thZone: 'Zona', thName: 'Nombre', thHR: 'Frecuencia Cardíaca', thPct: '% FC Máx.', thDur: 'Duración por esfuerzo', thVol: 'Volumen semanal',
+    tblNames: ['Recuperación','Base Aeróbica','Tempo','Umbral','VO₂ Máx.'],
+    tblDurs: ['Ilimitado','45 min – 3 hrs','20 – 60 min','Intervalos 3–15 min','30 seg – 2 min'],
+    tblVols: ['Días de descanso / post-entreno','60–70% del total','10–15% del total','1–2 sesiones/semana','1 sesión/semana máx.'],
+    footerTemplate: (age,rhr,maxHR,level) => `Calculado con la Fórmula de Karvonen &nbsp;·&nbsp; Edad ${age} &nbsp;·&nbsp; FCrep ${rhr} lpm &nbsp;·&nbsp; FC Máx. ${maxHR} lpm &nbsp;·&nbsp; ${level}<br>Para condiciones médicas o precisión clínica, consulta a un médico deportivo.`,
+    levelLabels: { beginner:'Principiante', intermediate:'Intermedio', advanced:'Avanzado', athlete:'Atleta' },
+    tips: {
+      beginner: { title:'Consejos para Principiantes', cards:[
+        ['🚶','Empieza Despacio','Comienza con 3 sesiones/semana completamente en Zona 1–2. No te apresures a zonas más altas — tu base aeróbica necesita tiempo para desarrollarse.'],
+        ['📅','Constancia Primero','20–30 min en Zona 2 tres veces por semana supera a una sesión dura seguida de días de agujetas. Sé regular antes de aumentar la intensidad.'],
+        ['💤','Prioriza la Recuperación','Tu cuerpo se adapta durante el descanso. Duerme 7–9 hrs y toma al menos 1–2 días de descanso completo por semana.'],
+        ['🩺','Monitorea Tu FC','Muchos principiantes entrenan demasiado fuerte. Si te quedas sin respiración, reduce el ritmo — probablemente estás en Zona 4–5 cuando deberías estar en Zona 2.'],
+        ['📈','Progresa Gradualmente','Aumenta la duración o la intensidad en no más del 10% por semana para evitar lesiones por sobreuso y el agotamiento.'],
+        ['🍽️','Nutrición Básica','Come una comida equilibrada 2 hrs antes del ejercicio. Mantente hidratado. Después del entreno: proteínas + carbohidratos en los primeros 30–60 min.'],
+      ]},
+      intermediate: { title:'Consejos para Nivel Intermedio', cards:[
+        ['🏃','Regla 80/20','Mantén ~80% de tu entrenamiento en Zonas 1–2 y solo ~20% en Zonas 3–5. La mayoría de los intermedios hacen lo contrario — y se estancan.'],
+        ['📏','Mide con Precisión','Un monitor de FC de banda pectoral es mucho más preciso que los sensores ópticos de muñeca, especialmente en intervalos. Considéralo para Zonas 4–5.'],
+        ['🔄','Progresión','Construye base en Z2 durante 6–8 semanas, luego añade una sesión de Z4 por semana. Incorpora Z5 solo cuando mejore el umbral.'],
+        ['💤','Señales de Recuperación','Si tu FC en reposo está 5–7+ lpm por encima de lo normal por la mañana, haz un día de Zona 1 o descansa — no estás completamente recuperado.'],
+        ['🍽️','Alimentación por Zona','Z1–2: no necesitas carbohidratos extra. Z3: snack ligero antes. Z4–5: comida rica en carbohidratos 2–3 hrs antes y batido de recuperación después.'],
+        ['📈','Registra y Ajusta','A medida que mejora tu forma, tus zonas cambian — recalibra cada 8–12 semanas. Una FC en reposo más baja significa que tus zonas se recalcularán ligeramente.'],
+      ]},
+      advanced: { title:'Consejos para Nivel Avanzado', cards:[
+        ['🎯','Entrenamiento Polarizado','Los entrenadores de élite recomiendan 80% fácil (Z1–2) y 20% muy duro (Z4–5), con muy poca Zona 3. Maximiza la adaptación minimizando la fatiga.'],
+        ['📊','Monitoreo de VFC','Registra la variabilidad de la frecuencia cardíaca diariamente. Una tendencia a la baja en la VFC señala fatiga acumulada — reduce la intensidad antes de colapsar.'],
+        ['⚡','Intervalos de Zona 5','1–2×/semana en fase de construcción. 30s de trabajo / 90s de descanso, 6–8 repeticiones. Enfócate en el máximo reclutamiento neuromuscular.'],
+        ['🔁','Periodización','Estructura tu año en bloques: base (Z1–2), construcción (Z2–4), pico (todas las zonas), descarga. Cada ciclo 3–4 semanas con una semana de recuperación.'],
+        ['🍽️','Nutrición de Precisión','Para trabajo Z4–5: 60–90g de carbohidratos/hr en esfuerzos de más de 90 min. Practica la nutrición de competición en el entrenamiento. Nunca pruebes alimentos nuevos el día de la carrera.'],
+        ['🧠','Ritmo Mental','Los atletas avanzados a menudo fallan por arrancar demasiado fuerte. Usa FC y RPE juntos — la FC se retrasa respecto al esfuerzo con calor o fatiga.'],
+      ]},
+      athlete: { title:'Consejos para Atletas de Élite', cards:[
+        ['🧬','Test Metabólico','Considera pruebas de laboratorio de VO₂ máx. y umbral de lactato para zonas exactas. Las estimaciones de campo como esta herramienta tienen un error de ±5–10%.'],
+        ['📡','Potencia + FC','Combina datos de FC con medidor de potencia o datos de ritmo. La deriva cardíaca (FC que sube a potencia fija) señala fatiga o deshidratación.'],
+        ['🏔️','Adaptación a la Altitud','En altitud, tus zonas de FC suben 5–10 lpm. Recalcula si entrenas por encima de 1500m y espera una reducción en la potencia de salida.'],
+        ['🔬','Dominio de la Zona 2','Los atletas de élite mantienen Zona 2 a ritmos que para otros parecen Zona 4 — se construye en años, no en meses.'],
+        ['⚖️','Gestión de Carga','Monitorea el puntaje de estrés de entrenamiento (TSS) y la carga crónica. No dejes que la carga aguda supere la crónica en más del 15% semanalmente.'],
+        ['🛌','Dormir es Entrenar','Los atletas de élite duermen 9–10 hrs. La hormona del crecimiento alcanza su pico en el sueño profundo — aquí es donde realmente te vuelves más rápido y más fuerte.'],
+      ]}
+    },
+    z5tips: {
+      beginner:'Evita la Zona 5 al principio. Construye al menos 8–12 semanas de base en Zonas 1–2 antes de cualquier trabajo de alta intensidad.',
+      intermediate:'Máx. 1×/semana. Usa intervalos muy cortos (30s–90s) con descanso completo. Mejora el VO₂ máx. y la potencia.',
+      advanced:'1–2×/semana en fase de construcción. 30s trabajo / 90s descanso, 6–8 reps. Enfócate en el máximo reclutamiento neuromuscular.',
+      athlete:'Integra con periodización en bloques. Microciclos completos de Z5 (3–5 días) seguidos de semanas de recuperación para maximizar la supercompensación.'
+    }
+  }
+};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+const ZONE_DEFS = [
+  { id:1, lo:0.50, hi:0.65 },
+  { id:2, lo:0.65, hi:0.75 },
+  { id:3, lo:0.75, hi:0.84 },
+  { id:4, lo:0.84, hi:0.93 },
+  { id:5, lo:0.93, hi:1.00 },
+];
+
+let currentLang = 'en';
+let currentAge  = 31;
+let currentRHR  = 60;
+let currentLevel = 'intermediate';
+
+// ─────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────
+function karv(rhr, hrr, pct) { return Math.round(rhr + hrr * pct); }
+
+function flash(el) {
+  if (!el) return;
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────
+// APPLY LANGUAGE (static text only, no recalc)
+// ─────────────────────────────────────────────
+function applyLang(lang) {
+  const t = I18N[lang];
+  document.documentElement.lang = lang;
+  document.title = t.pageTitle;
+
+  // Title
+  const h1 = document.querySelector('.title-block h1');
+  h1.innerHTML = `${t.titleLine1}<span>${t.titleGradient}</span>`;
+
+  // Stat labels
+  setText('lbl-age',   t.lblAge);
+  setText('lbl-maxhr', t.lblMaxHR);
+  setText('lbl-rhr',   t.lblRHR);
+  setText('lbl-hrr',   t.lblHRR);
+
+  // Calc panel
+  setText('calc-title',    t.calcTitle);
+  setText('lbl-inp-age',   t.lblInpAge);
+  setText('lbl-inp-rhr',   t.lblInpRhr);
+  setText('lbl-inp-level', t.lblInpLevel);
+  document.getElementById('calc-btn').textContent = t.calcBtn;
+
+  // Select options
+  setText('opt-beginner',     t.optBeginner);
+  setText('opt-intermediate', t.optIntermediate);
+  setText('opt-advanced',     t.optAdvanced);
+  setText('opt-athlete',      t.optAthlete);
+
+  // Formula note labels
+  setText('fn-method-lbl', t.fnMethodLbl);
+  setText('fn-method-text', t.fnMethodText);
+  setText('fn-maxhr-lbl',  t.fnMaxHRLbl);
+  setText('fn-hrr-lbl',    t.fnHRRLbl);
+  setText('fn-level-lbl',  t.fnLevelLbl);
+  setText('fn-level',      t.levelLabels[currentLevel]);
+
+  // Zone names + info labels
+  for (let i = 1; i <= 5; i++) {
+    setText(`zname-${i}`,   t.znames[i-1]);
+    setText(`lbl-when-${i}`, t.lblWhen);
+    setText(`lbl-feel-${i}`, t.lblFeel);
+    setText(`lbl-tips-${i}`, t.lblTips);
+    setText(`lbl-fuel-${i}`, t.lblFuel);
+    const z = t.zones[i-1];
+    setText(`ztxt-when-${i}`, z.when);
+    setText(`ztxt-feel-${i}`, z.feel);
+    if (i < 5) {
+      setText(`ztxt-tips-${i}`, z.tips);
+    } else {
+      setText(`ztxt-tips-5`, t.z5tips[currentLevel]);
+    }
+    setText(`ztxt-fuel-${i}`, z.fuel);
+  }
+
+  // Table headers
+  setText('tbl-title', t.tblTitle);
+  setText('th-zone', t.thZone); setText('th-name', t.thName); setText('th-hr', t.thHR);
+  setText('th-pct', t.thPct); setText('th-dur', t.thDur); setText('th-vol', t.thVol);
+
+  // Table rows
+  for (let i = 1; i <= 5; i++) {
+    setText(`tbl-name${i}`, t.tblNames[i-1]);
+    setText(`tbl-dur${i}`,  t.tblDurs[i-1]);
+    setText(`tbl-vol${i}`,  t.tblVols[i-1]);
+  }
+
+  // Tips section
+  const tipData = t.tips[currentLevel];
+  setText('tips-title', tipData.title);
+  document.getElementById('tips-grid').innerHTML = tipData.cards
+    .map(([icon, title, text]) => `<div class="tip-card"><h4>${icon} ${title}</h4><p>${text}</p></div>`)
+    .join('');
+
+  // Footer
+  const maxHR = 220 - currentAge;
+  setHTML('footer-note', t.footerTemplate(currentAge, currentRHR, maxHR, t.levelLabels[currentLevel]));
+
+  // Stat unit years label stays numeric — just update unit text
+  const ageEl = document.getElementById('disp-age');
+  ageEl.innerHTML = `${currentAge}<span class="stat-unit">${t.unitYrs}</span>`;
+
+  // Animate page content
+  document.querySelector('.wrapper').classList.remove('lang-animate');
+  void document.querySelector('.wrapper').offsetWidth;
+  document.querySelector('.wrapper').classList.add('lang-animate');
+}
+
+// ─────────────────────────────────────────────
+// LANGUAGE SWITCHER
+// ─────────────────────────────────────────────
+function setLang(lang) {
+  if (lang === currentLang) return;
+  currentLang = lang;
+  document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+  document.getElementById('btn-es').classList.toggle('active', lang === 'es');
+  applyLang(lang);
+}
+
+// ─────────────────────────────────────────────
+// RECALCULATE
+// ─────────────────────────────────────────────
+function recalculate() {
+  const t = I18N[currentLang];
+  const ageEl = document.getElementById('inp-age');
+  const rhrEl = document.getElementById('inp-rhr');
+  const lvlEl = document.getElementById('inp-level');
+  const errAge = document.getElementById('err-age');
+  const errRhr = document.getElementById('err-rhr');
+
+  const age = parseInt(ageEl.value);
+  const rhr = parseInt(rhrEl.value);
+  const level = lvlEl.value;
+  let valid = true;
+
+  if (isNaN(age) || age < 10 || age > 100) {
+    ageEl.classList.add('error'); errAge.textContent = t.errAge; valid = false;
+  } else {
+    ageEl.classList.remove('error'); errAge.textContent = '';
+  }
+
+  if (isNaN(rhr) || rhr < 30 || rhr > 120) {
+    rhrEl.classList.add('error'); errRhr.textContent = t.errRhr; valid = false;
+  } else {
+    rhrEl.classList.remove('error'); errRhr.textContent = '';
+  }
+
+  if (!valid) return;
+
+  currentAge   = age;
+  currentRHR   = rhr;
+  currentLevel = level;
+
+  const maxHR = 220 - age;
+  const hrr   = maxHR - rhr;
+  const label = t.levelLabels[level];
+
+  // Header stats
+  const ageDispEl = document.getElementById('disp-age');
+  ageDispEl.innerHTML = `${age}<span class="stat-unit">${t.unitYrs}</span>`; flash(ageDispEl);
+
+  const updates = [
+    ['disp-maxhr', `${maxHR}<span class="stat-unit">bpm</span>`],
+    ['disp-rhr',   `${rhr}<span class="stat-unit">bpm</span>`],
+    ['disp-hrr',   `${hrr}<span class="stat-unit">bpm</span>`],
+  ];
+  updates.forEach(([id, html]) => { const el = document.getElementById(id); el.innerHTML = html; flash(el); });
+
+  // Formula note
+  setText('fn-maxhr', maxHR);
+  setText('fn-hrr', hrr);
+  setText('fn-level', label);
+
+  // Zone BPMs
+  ZONE_DEFS.forEach(z => {
+    const lo = karv(rhr, hrr, z.lo);
+    const hi = karv(rhr, hrr, z.hi);
+    const bpmEl = document.getElementById(`bpm-z${z.id}`);
+    const tblEl = document.getElementById(`tbl-z${z.id}`);
+    bpmEl.textContent = `${lo} – ${hi}`; flash(bpmEl);
+    tblEl.textContent = `${lo} – ${hi} bpm`; flash(tblEl);
+  });
+
+  // Zone 5 level-specific tip
+  setText('ztxt-tips-5', t.z5tips[level]);
+
+  // Tips section
+  const tipData = t.tips[level];
+  setText('tips-title', tipData.title);
+  document.getElementById('tips-grid').innerHTML = tipData.cards
+    .map(([icon, title, text]) => `<div class="tip-card"><h4>${icon} ${title}</h4><p>${text}</p></div>`)
+    .join('');
+
+  // Footer
+  setHTML('footer-note', t.footerTemplate(age, rhr, maxHR, label));
+}
+
+// Enter key
+['inp-age','inp-rhr'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') recalculate(); });
+});
+</script>
+</body>
+</html>
